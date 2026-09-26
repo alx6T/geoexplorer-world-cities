@@ -1,721 +1,108 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoExplorer - World Map & City Discoveries</title>
-
-  <!-- Leaflet CSS for Map Rendering -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  
-  <!-- Leaflet MarkerCluster Plugin for Performance -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
-
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" crossorigin="anonymous">
   <style>
-    :root {
-      --bg-dark: #121824;
-      --card-bg: rgba(26, 34, 52, 0.95);
-      --accent: #3b82f6;
-      --accent-hover: #2563eb;
-      --text: #f3f4f6;
-      --text-muted: #9ca3af;
-      --border: #2d3748;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-
-    body {
-      background-color: var(--bg-dark);
-      color: var(--text);
-      overflow: hidden;
-      height: 100vh;
-      width: 100vw;
-    }
-
-    /* Fullscreen Map */
-    #map {
-      height: 100vh;
-      width: 100vw;
-      z-index: 1;
-    }
-
-    /* Top Navigation Control Bar */
-    .controls-overlay {
-      position: absolute;
-      top: 15px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      display: flex;
-      gap: 10px;
-      width: 90%;
-      max-width: 600px;
-    }
-
-    .search-box {
-      flex: 1;
-      display: flex;
-      background: var(--card-bg);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--border);
-      border-radius: 30px;
-      padding: 5px 15px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    }
-
-    .search-box input {
-      background: transparent;
-      border: none;
-      outline: none;
-      color: white;
-      padding: 10px;
-      font-size: 1rem;
-      width: 100%;
-    }
-
-    .search-box input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .search-box button, .dice-btn {
-      background: var(--accent);
-      border: none;
-      color: white;
-      border-radius: 50%;
-      width: 42px;
-      height: 42px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-      transition: transform 0.2s, background 0.2s;
-      flex-shrink: 0;
-    }
-
-    .search-box button:hover, .dice-btn:hover {
-      background: var(--accent-hover);
-      transform: scale(1.05);
-    }
-
-    .dice-btn {
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      width: 48px;
-      height: 48px;
-      font-size: 1.5rem;
-    }
-
-    /* City Info Drawer Sidebar */
-    .city-card {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      width: 380px;
-      max-width: calc(100vw - 40px);
-      max-height: 80vh;
-      background: var(--card-bg);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px;
-      z-index: 1000;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-      overflow-y: auto;
-      display: none;
-      transition: all 0.3s ease;
-    }
-
-    .city-card.active {
-      display: block;
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.2rem;
-      cursor: pointer;
-    }
-
-    .city-title {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-bottom: 2px;
-      color: #fff;
-    }
-
-    .city-country {
-      color: var(--accent);
-      font-size: 0.9rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 15px;
-    }
-
-    .city-coordinates {
-      color: var(--text-muted);
-      font-size: 0.85rem;
-      margin-bottom: 10px;
-      font-family: monospace;
-    }
-
-    .city-population {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      margin-bottom: 15px;
-    }
-
-    .image-gallery {
-      width: 100%;
-      height: 180px;
-      border-radius: 10px;
-      overflow: hidden;
-      margin-bottom: 15px;
-      background: #000;
-    }
-
-    .image-gallery img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .image-placeholder {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-      color: var(--text-muted);
-      font-size: 0.9rem;
-    }
-
-    .facts-header {
-      font-size: 1.1rem;
-      margin-bottom: 8px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 5px;
-    }
-
-    .facts-list {
-      list-style: none;
-    }
-
-    .facts-list li {
-      font-size: 0.92rem;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-      line-height: 1.4;
-      padding-left: 15px;
-      position: relative;
-    }
-
-    .facts-list li::before {
-      content: "•";
-      color: var(--accent);
-      position: absolute;
-      left: 0;
-      font-weight: bold;
-    }
-
-    /* Loading Indicator */
-    .loading-indicator {
-      position: absolute;
-      bottom: 30px;
-      left: 20px;
-      z-index: 999;
-      background: var(--card-bg);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 15px;
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      display: none;
-    }
-
-    .loading-indicator.active {
-      display: block;
-      animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
-
-    /* Mobile Adaptations */
-    @media (max-width: 600px) {
-      .city-card {
-        left: 20px;
-        right: 20px;
-        width: auto;
-        bottom: 20px;
-      }
-    }
+    :root { --bg:#121824; --card:rgba(26,34,52,.95); --accent:#3b82f6; --muted:#9ca3af; --border:#2d3748 }
+    * { box-sizing:border-box; margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif }
+    body { height:100vh; overflow:hidden; background:var(--bg); color:#f3f4f6 }
+    #map { width:100vw; height:100vh }
+    .controls { position:absolute; z-index:1000; top:15px; left:50%; transform:translateX(-50%); display:flex; gap:10px; width:90%; max-width:600px }
+    .search { display:flex; flex:1; padding:5px 15px; border:1px solid var(--border); border-radius:30px; background:var(--card); box-shadow:0 4px 20px #0005 }
+    input { width:100%; padding:10px; border:0; outline:0; background:transparent; color:white; font-size:1rem }
+    button { border:0; background:var(--accent); color:white; cursor:pointer; border-radius:10px; padding:0 15px; font-size:1rem }
+    .search button { width:42px; height:42px; padding:0; border-radius:50% }
+    .status { position:absolute; z-index:1000; bottom:25px; left:20px; padding:10px 15px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--muted) }
+    .card { display:none; position:absolute; z-index:1000; right:20px; bottom:20px; width:380px; max-width:calc(100vw - 40px); max-height:80vh; overflow:auto; padding:20px; border:1px solid var(--border); border-radius:16px; background:var(--card); box-shadow:0 10px 30px #0008 }
+    .card.active { display:block }
+    .close { float:right; background:transparent; color:var(--muted); padding:0; font-size:1.3rem }
+    h2 { margin-bottom:2px } .country { color:var(--accent); text-transform:uppercase; letter-spacing:1px; font-size:.9rem; margin-bottom:12px }
+    .muted { color:var(--muted); margin:8px 0 } ul { padding-left:20px; color:var(--muted); line-height:1.5 }
+    @media (max-width:600px) { .card { left:20px; right:20px; width:auto } }
   </style>
 </head>
 <body>
-
-  <!-- Search & Dice UI Controls -->
-  <div class="controls-overlay">
-    <div class="search-box">
-      <input type="text" id="searchInput" placeholder="Search for any city..." onkeypress="handleSearch(event)">
-      <button onclick="searchCity()" title="Search">🔍</button>
-    </div>
-    <button class="dice-btn" onclick="getRandomCity()" title="Discover Random City">🎲</button>
-  </div>
-
-  <!-- Loading Indicator -->
-  <div class="loading-indicator" id="loadingIndicator">
-    Loading world cities... 🌍
-  </div>
-
-  <!-- Interactive Map Container -->
-  <div id="map"></div>
-
-  <!-- City Information Sidebar -->
-  <div class="city-card" id="cityCard">
-    <button class="close-btn" onclick="closeCityCard()">✕</button>
-    <h2 class="city-title" id="cityName">City Name</h2>
-    <div class="city-country" id="cityCountry">Country</div>
-    <div class="city-coordinates" id="cityCoordinates">Coordinates</div>
-    <div class="city-population" id="cityPopulation">Population</div>
-    
-    <div class="image-gallery" id="imageGallery">
-      <img id="cityImage" src="" alt="City visual">
-    </div>
-
-    <h3 class="facts-header">Did You Know?</h3>
-    <ul class="facts-list" id="cityFacts">
-      <!-- Facts populated dynamically -->
-    </ul>
-  </div>
-
-  <!-- Leaflet JS Map Engine -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  
-  <!-- Leaflet MarkerCluster Plugin -->
-  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-
+  <div class="controls"><div class="search"><input id="searchInput" placeholder="Search for any city..."><button id="searchButton" title="Search">🔍</button></div><button id="randomButton" title="Discover a random city">🎲</button></div>
+  <div id="map" aria-label="Interactive world map"></div>
+  <div id="status" class="status">Loading world cities… 🌍</div>
+  <aside id="card" class="card"><button id="closeButton" class="close">✕</button><h2 id="cityName"></h2><div id="cityCountry" class="country"></div><div id="cityCoordinates" class="muted"></div><div id="cityPopulation" class="muted"></div><ul id="facts"></ul></aside>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js" crossorigin="anonymous"></script>
   <script>
-    // ============================================================================
-    // Featured Cities Database (High-Priority with Rich Facts & Imagery)
-    // ============================================================================
-    const featuredCitiesDatabase = [
-      {
-        name: "Tokyo",
-        country: "Japan",
-        coords: [35.6762, 139.6503],
-        image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=800&q=80",
-        population: 37400068,
-        facts: [
-          "Tokyo is the world's most populous metropolitan area with over 37 million residents.",
-          "It features the famous Shibuya Crossing, where up to 3,000 people cross the street simultaneously at peak times.",
-          "Tokyo was originally a small fishing village named 'Edo' before becoming Japan's capital in 1868."
-        ]
-      },
-      {
-        name: "Rome",
-        country: "Italy",
-        coords: [41.9028, 12.4964],
-        image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80",
-        population: 2761477,
-        facts: [
-          "Rome has a sovereign country located entirely within its borders: Vatican City.",
-          "Nearly €1.5 million in coins are thrown into the Trevi Fountain each year, which is donated to charity.",
-          "Ancient Rome built over 50,000 miles of paved roads connecting the empire."
-        ]
-      },
-      {
-        name: "Los Angeles",
-        country: "United States",
-        coords: [34.0522, -118.2437],
-        image: "https://images.unsplash.com/photo-1580655653885-65763b2597d0?auto=format&fit=crop&w=800&q=80",
-        population: 3898747,
-        facts: [
-          "If Los Angeles were an independent country, its economy would be larger than that of Saudi Arabia or Switzerland.",
-          "The iconic Hollywood Sign originally read 'Hollywoodland' as an advertisement for a real estate development.",
-          "Los Angeles is home to Venice Beach, the birthplace of modern skateboarding culture."
-        ]
-      },
-      {
-        name: "Paris",
-        country: "France",
-        coords: [48.8566, 2.3522],
-        image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80",
-        population: 2161000,
-        facts: [
-          "The Eiffel Tower expands by up to 15 cm (6 inches) during hot summer days due to thermal expansion of the iron.",
-          "There is only one stop sign in the entire city of Paris—traffic operates strictly on right-of-way rules.",
-          "Underneath Paris lies an underground network containing the skeletal remains of over six million people in the Catacombs."
-        ]
-      },
-      {
-        name: "Cairo",
-        country: "Egypt",
-        coords: [30.0444, 31.2357],
-        image: "https://images.unsplash.com/photo-1572252821143-025983751f89?auto=format&fit=crop&w=800&q=80",
-        population: 20076000,
-        facts: [
-          "Cairo is home to the Great Pyramid of Giza, the oldest and only surviving ancient Wonder of the World.",
-          "The city contains Al-Azhar University, founded around 970 AD, making it one of the world's oldest degree-granting institutions.",
-          "It is locally referred to as 'Umm al-Dunya', which translates to 'Mother of the World'."
-        ]
-      },
-      {
-        name: "Sydney",
-        country: "Australia",
-        coords: [-33.8688, 151.2093],
-        image: "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=800&q=80",
-        population: 5312163,
-        facts: [
-          "The famous Sydney Opera House roof is covered with 1,056,006 self-cleaning ceramic tiles imported from Sweden.",
-          "Sydney's harbor is considered one of the largest and deepest natural harbors in the world.",
-          "The city boasts over 100 beaches, including world-famous surfing spots like Bondi Beach."
-        ]
-      },
-      {
-        name: "Rio de Janeiro",
-        country: "Brazil",
-        coords: [-22.9068, -43.1729],
-        image: "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=800&q=80",
-        population: 6748000,
-        facts: [
-          "The iconic Christ the Redeemer statue on Mount Corcovado was hit by lightning in 2014, damaging its right thumb.",
-          "Rio de Janeiro was briefly declared the capital of the Portuguese Empire in 1808, making it the only European capital outside Europe.",
-          "The city hosts the largest Carnival celebration in the world, drawing millions of dancers and visitors annually."
-        ]
-      },
-      {
-        name: "New York",
-        country: "United States",
-        coords: [40.7128, -74.0060],
-        image: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=800&q=80",
-        population: 8398748,
-        facts: [
-          "New York City is the most populous city in the United States with over 8.3 million residents.",
-          "The Statue of Liberty was a gift from France to commemorate the centennial of American independence.",
-          "Times Square gets its name from The New York Times building and receives over 300,000 pedestrians daily."
-        ]
-      },
-      {
-        name: "London",
-        country: "United Kingdom",
-        coords: [51.5074, -0.1278],
-        image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80",
-        population: 9002488,
-        facts: [
-          "London is one of the oldest major settlements in Britain, with origins dating back over 2,000 years.",
-          "The Big Ben clock tower is actually called the Elizabeth Tower after Queen Elizabeth II's Platinum Jubilee.",
-          "London hosted the Summer Olympics twice, in 1908 and 2012, making it the first city to do so."
-        ]
-      },
-      {
-        name: "Dubai",
-        country: "United Arab Emirates",
-        coords: [25.2048, 55.2708],
-        image: "https://images.unsplash.com/photo-1512453391515-dc7e4e8decbb?auto=format&fit=crop&w=800&q=80",
-        population: 3621000,
-        facts: [
-          "Dubai's Burj Khalifa is the world's tallest building at 828 meters (2,717 feet) tall.",
-          "The city was transformed from a small trading port to a global metropolis in just a few decades.",
-          "Dubai's Palm Jumeirah is an artificial archipelago shaped like a palm tree, visible from space."
-        ]
-      },
-      {
-        name: "Singapore",
-        country: "Singapore",
-        coords: [1.3521, 103.8198],
-        image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?auto=format&fit=crop&w=800&q=80",
-        population: 5850342,
-        facts: [
-          "Singapore is a city-state and ranks as one of the richest countries in the world by GDP per capita.",
-          "The iconic Gardens by the Bay features the famous Supertrees, which are structures up to 50 meters tall.",
-          "Singapore has four official languages: English, Mandarin Chinese, Malay, and Tamil."
-        ]
-      },
-      {
-        name: "Barcelona",
-        country: "Spain",
-        coords: [41.3851, 2.1734],
-        image: "https://images.unsplash.com/photo-1562883676-8c6fbf4d13b4?auto=format&fit=crop&w=800&q=80",
-        population: 1608746,
-        facts: [
-          "Barcelona is home to the Sagrada Familia, a basilica under construction for over 140 years.",
-          "The city hosted the 1992 Summer Olympics, which transformed Barcelona's urban landscape.",
-          "Park Güell, designed by Antoni Gaudí, is a UNESCO World Heritage Site featuring colorful mosaic artwork."
-        ]
-      },
-      {
-        name: "Mumbai",
-        country: "India",
-        coords: [19.0760, 72.8777],
-        image: "https://images.unsplash.com/photo-1517148814408-038b183de6ce?auto=format&fit=crop&w=800&q=80",
-        population: 21357014,
-        facts: [
-          "Mumbai is home to Bollywood, the world's largest film industry by number of movies produced annually.",
-          "The city's Gateway of India is an iconic monument built to commemorate the visit of King George V in 1911.",
-          "Mumbai's Marine Drive, known as the Queen's Necklace, features a 6 km crescent-shaped roadway illuminated at night."
-        ]
+    (() => {
+      'use strict';
+      const featured = [
+        ['Tokyo','Japan',35.6762,139.6503], ['Rome','Italy',41.9028,12.4964],
+        ['Paris','France',48.8566,2.3522], ['London','United Kingdom',51.5074,-0.1278],
+        ['New York','United States',40.7128,-74.006], ['Sydney','Australia',-33.8688,151.2093],
+        ['Cairo','Egypt',30.0444,31.2357], ['Mumbai','India',19.076,72.8777]
+      ].map(([name,country,lat,lng]) => ({name,country,lat,lng}));
+      const status = document.getElementById('status');
+      const map = L.map('map', { center:[20,0], zoom:3, zoomControl:false });
+      L.control.zoom({position:'bottomleft'}).addTo(map);
+      const carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom:19, attribution:'© OpenStreetMap contributors © CARTO' }).addTo(map);
+      const fallback = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OpenStreetMap contributors' });
+      let fallbackUsed = false;
+      carto.on('tileerror', () => { if (!fallbackUsed) { fallbackUsed = true; map.removeLayer(carto); fallback.addTo(map); } });
+      const clusters = L.markerClusterGroup();
+      const allCities = [];
+      const featuredByName = new Map(featured.map(city => [city.name.toLowerCase(), city]));
+
+      function markerFor(city) {
+        const marker = L.marker([Number(city.lat), Number(city.lng)]);
+        marker.on('click', () => showCity(featuredByName.get(String(city.name).toLowerCase()) || city));
+        return marker;
       }
-    ];
-
-    // Initialize Map View
-    let map = L.map('map', {
-      center: [20, 0],
-      zoom: 3,
-      zoomControl: false
-    });
-
-    // High-Resolution CartoDB Voyager Map Layer
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a> | Data: <a href="https://www.geonames.org/">GeoNames</a>'
-    }).addTo(map);
-
-    // Position Zoom Controls to Bottom Left
-    L.control.zoom({ position: 'bottomleft' }).addTo(map);
-
-    // Initialize Marker Cluster Group for Performance
-    let markerClusterGroup = L.markerClusterGroup({
-      iconCreateFunction: createCustomClusterIcon
-    });
-
-    function createCustomClusterIcon(cluster) {
-      const childCount = cluster.getChildCount();
-      const size = childCount > 100 ? 40 : childCount > 50 ? 35 : 30;
-      return L.divIcon({
-        html: `<div style="background: var(--accent); border-radius: 50%; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.8rem;">${childCount}</div>`,
-        iconSize: [size, size],
-        className: 'marker-cluster'
-      });
-    }
-
-    let currentMarker = null;
-    let allCitiesData = [];
-    let featuredCitiesMap = new Map();
-
-    // Build featured cities map for quick lookup
-    featuredCitiesDatabase.forEach(city => {
-      featuredCitiesMap.set(`${city.name.toLowerCase()},${city.country.toLowerCase()}`, city);
-    });
-
-    // ============================================================================
-    // Load GeoNames World Cities Data
-    // ============================================================================
-    async function loadGeoNamesCities() {
-      const loadingIndicator = document.getElementById('loadingIndicator');
-      loadingIndicator.classList.add('active');
-
-      try {
-        // Fetch cities from a reliable GeoNames CDN/Mirror
-        const response = await fetch('https://cdn.jsdelivr.net/npm/world-cities-json@1.0.1/json/cities.json');
-        const cities = await response.json();
-        
-        console.log(`Loaded ${cities.length} cities from world database`);
-        allCitiesData = cities;
-
-        // Add markers for all cities
-        cities.forEach(city => {
-          const cityKey = `${city.name.toLowerCase()},${city.country.toLowerCase()}`;
-          const isFeatured = featuredCitiesMap.has(cityKey);
-          
-          if (city.lat && city.lng) {
-            const marker = L.marker([city.lat, city.lng], {
-              icon: L.icon({
-                iconUrl: isFeatured 
-                  ? 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNSIgaGVpZ2h0PSI0MSIgdmlld0JveD0iMCAwIDI1IDQxIj48cGF0aCBmaWxsPSIjMzc4MGY2IiBkPSJNMTIuNSAwQzUuNTk3IDAgMCA1LjU5NyAwIDEyLjVjMCA2LjIwMiAxMi41IDI4LjEwMyAxMi41IDI4LjEwM3MxMi41LTIxLjkwMSAxMi41LTI4LjEwM0MyNSA1LjU5NyAxOS40MDMgMCAxMi41IDB6TTEyLjUgMTljLTMuNTc2IDAtNi41LTIuOTI0LTYuNS02LjVzMi45MjQtNi41IDYuNS02LjUgNi41IDIuOTI0IDYuNSA2LjUtMi45MjQgNi41LTYuNSA2LjV6Ii8+PC9zdmc+'
-                  : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDIwIDMyIj48cGF0aCBmaWxsPSIjOWNhM2FmIiBkPSJNMTAgMEM0LjQ3NyAwIDAgNC40NzcgMCAxMGMwIDQuNDcyIDEwIDIyIDEwIDIyczEwLTE3LjUyOCAxMC0yMkMyMCA0LjQ3NyAxNS41MjMgMCAxMCAweiIvPjwvc3ZnPg==',
-                iconSize: isFeatured ? [25, 41] : [20, 32],
-                iconAnchor: isFeatured ? [12.5, 41] : [10, 32],
-                popupAnchor: [0, -32]
-              })
-            });
-
-            marker.on('click', () => {
-              const featured = featuredCitiesMap.get(cityKey);
-              if (featured) {
-                displayCityData(featured, true);
-              } else {
-                displayCityData(city, true);
-              }
-            });
-
-            markerClusterGroup.addLayer(marker);
+      function showCity(city) {
+        const lat = Number(city.lat ?? city.coords?.[0]);
+        const lng = Number(city.lng ?? city.coords?.[1]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        map.flyTo([lat,lng], 10, {duration:1.2});
+        document.getElementById('cityName').textContent = city.name || 'Unknown city';
+        document.getElementById('cityCountry').textContent = city.country || 'Unknown country';
+        document.getElementById('cityCoordinates').textContent = `📍 ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+        document.getElementById('cityPopulation').textContent = city.population ? `👥 Population: ${Number(city.population).toLocaleString()}` : '';
+        document.getElementById('facts').innerHTML = `<li>Explore ${city.name || 'this location'} by zooming in on the map.</li><li>Coordinates: ${lat.toFixed(4)}°, ${lng.toFixed(4)}°</li>`;
+        document.getElementById('card').classList.add('active');
+      }
+      async function loadCities() {
+        try {
+          const response = await fetch('https://cdn.jsdelivr.net/npm/world-cities-json@1.0.1/json/cities.json');
+          if (!response.ok) throw new Error(`Cities request failed: ${response.status}`);
+          const cities = await response.json();
+          for (const city of cities) {
+            const lat = Number(city.lat), lng = Number(city.lng);
+            if (city.name && Number.isFinite(lat) && Number.isFinite(lng)) { allCities.push({...city,lat,lng}); clusters.addLayer(markerFor({...city,lat,lng})); }
           }
-        });
-
-        map.addLayer(markerClusterGroup);
-        loadingIndicator.classList.remove('active');
-      } catch (error) {
-        console.error('Error loading cities:', error);
-        loadingIndicator.innerHTML = 'Error loading cities. Please refresh the page.';
+          map.addLayer(clusters);
+          status.textContent = `Loaded ${allCities.length.toLocaleString()} cities 🌍`;
+          setTimeout(() => status.remove(), 3500);
+        } catch (error) {
+          console.error('Unable to load city data:', error);
+          featured.forEach(city => clusters.addLayer(markerFor(city)));
+          map.addLayer(clusters);
+          status.textContent = 'Map loaded. City database unavailable; showing featured cities.';
+        }
       }
-    }
-
-    // Load cities on map initialization
-    map.on('load', loadGeoNamesCities);
-    // Fallback in case load event fires before map is ready
-    setTimeout(() => {
-      if (allCitiesData.length === 0) {
-        loadGeoNamesCities();
+      function search() {
+        const query = document.getElementById('searchInput').value.trim().toLowerCase();
+        if (!query) return;
+        const city = featured.find(c => c.name.toLowerCase() === query) || allCities.find(c => String(c.name).toLowerCase() === query);
+        if (city) return showCity(city);
+        status.textContent = 'City not found. Try another name.';
       }
-    }, 500);
-
-    // ============================================================================
-    // Display City Data in Card
-    // ============================================================================
-    function displayCityData(city, animateMap = true) {
-      if (animateMap) {
-        map.flyTo(city.coords || [city.lat, city.lng], 12, { duration: 1.8 });
-      }
-
-      document.getElementById('cityName').textContent = city.name;
-      document.getElementById('cityCountry').textContent = city.country || 'Unknown';
-      
-      const lat = (city.lat || city.coords[0]).toFixed(4);
-      const lng = (city.lng || city.coords[1]).toFixed(4);
-      document.getElementById('cityCoordinates').textContent = `📍 ${lat}°, ${lng}°`;
-      
-      const population = city.population;
-      if (population) {
-        document.getElementById('cityPopulation').textContent = `👥 Population: ${population.toLocaleString()}`;
-      } else {
-        document.getElementById('cityPopulation').textContent = '';
-      }
-
-      // Handle image gallery
-      const imageGallery = document.getElementById('imageGallery');
-      const cityImage = document.getElementById('cityImage');
-      
-      if (city.image) {
-        imageGallery.innerHTML = `<img id="cityImage" src="${city.image}" alt="${city.name}" onerror="this.parentElement.innerHTML='<div class=\\'image-placeholder\\'>📸 Image not available</div>'">`;
-      } else {
-        imageGallery.innerHTML = `<div class="image-placeholder">🌍 ${city.name}, ${city.country}</div>`;
-      }
-
-      // Handle facts
-      const factsList = document.getElementById('cityFacts');
-      factsList.innerHTML = '';
-      
-      if (city.facts && city.facts.length > 0) {
-        city.facts.forEach(fact => {
-          let li = document.createElement('li');
-          li.textContent = fact;
-          factsList.appendChild(li);
-        });
-      } else {
-        const defaultFacts = [
-          `Latitude: ${lat}°, Longitude: ${lng}°`,
-          `Country: ${city.country || 'Unknown'}`,
-          `Explore this location by zooming in on the map to discover more details.`
-        ];
-        defaultFacts.forEach(fact => {
-          let li = document.createElement('li');
-          li.textContent = fact;
-          factsList.appendChild(li);
-        });
-      }
-
-      document.getElementById('cityCard').classList.add('active');
-    }
-
-    // ============================================================================
-    // Random City Discovery
-    // ============================================================================
-    function getRandomCity() {
-      const randomIndex = Math.floor(Math.random() * featuredCitiesDatabase.length);
-      const randomCity = featuredCitiesDatabase[randomIndex];
-      displayCityData(randomCity, true);
-    }
-
-    // ============================================================================
-    // City Search Function
-    // ============================================================================
-    function searchCity() {
-      const query = document.getElementById('searchInput').value.trim();
-      if (!query) return;
-
-      // Check in featured cities first
-      const matched = featuredCitiesDatabase.find(c => 
-        c.name.toLowerCase() === query.toLowerCase() ||
-        c.country.toLowerCase() === query.toLowerCase()
-      );
-      if (matched) {
-        displayCityData(matched, true);
-        return;
-      }
-
-      // Check in loaded world cities
-      const worldMatch = allCitiesData.find(c =>
-        c.name.toLowerCase() === query.toLowerCase()
-      );
-      if (worldMatch) {
-        displayCityData(worldMatch, true);
-        return;
-      }
-
-      // Fallback to OpenStreetMap Nominatim Geocoding for any location globally
-      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.length > 0) {
-            const result = data[0];
-            const lat = parseFloat(result.lat);
-            const lon = parseFloat(result.lon);
-            const displayName = result.display_name.split(',')[0];
-            const countryName = result.display_name.split(',').slice(-1)[0] || "";
-
-            const dynamicCity = {
-              name: displayName,
-              country: countryName,
-              coords: [lat, lon],
-              facts: [
-                `Coordinates: ${lat.toFixed(4)}° N/S, ${lon.toFixed(4)}° E/W`,
-                `Location: ${result.display_name}`,
-                `Explore this area by zooming in on the map for more details.`
-              ]
-            };
-
-            // Place interactive pin at searched location
-            if (currentMarker) map.removeLayer(currentMarker);
-            currentMarker = L.marker([lat, lon], {
-              icon: L.icon({
-                iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNiIgaGVpZ2h0PSI0MiIgdmlld0JveD0iMCAwIDI2IDQyIj48cGF0aCBmaWxsPSIjZWY0NDQ0IiBkPSJNMTMgMEM1Ljg3IDAgMCA1LjkzIDAgMTMuMjdjMCA2LjYgMTMgMjguNzMgMTMgMjguNzNzMTMtMjIuMTMgMTMtMjguNzNDMjYgNS45MyAyMC4xMyAwIDEzIDB6bTAtMjBjLTMuODcgMC03IDMuMTMtNyA3czMuMTMgNyA3IDcgNy0zLjEzIDctNy0zLjEzLTctNy03eiIvPjwvc3ZnPg==',
-                iconSize: [26, 42],
-                iconAnchor: [13, 42],
-                popupAnchor: [0, -42]
-              })
-            }).addTo(map);
-
-            displayCityData(dynamicCity, true);
-          } else {
-            alert('Location not found. Try entering another city or address!');
-          }
-        })
-        .catch(() => alert('Error searching location. Please try again.'));
-    }
-
-    function handleSearch(e) {
-      if (e.key === 'Enter') searchCity();
-    }
-
-    function closeCityCard() {
-      document.getElementById('cityCard').classList.remove('active');
-    }
+      document.getElementById('searchButton').onclick = search;
+      document.getElementById('searchInput').onkeydown = event => { if (event.key === 'Enter') search(); };
+      document.getElementById('randomButton').onclick = () => showCity(featured[Math.floor(Math.random() * featured.length)]);
+      document.getElementById('closeButton').onclick = () => document.getElementById('card').classList.remove('active');
+      // Start explicitly after all dependencies and the map container are ready.
+      loadCities();
+    })();
   </script>
 </body>
 </html>
